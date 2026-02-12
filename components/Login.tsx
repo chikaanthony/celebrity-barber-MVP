@@ -2,17 +2,18 @@
 import React, { useState } from 'react';
 import { Logo, GoldButton } from './CommonUI';
 import { Lock, Mail, X, User, ArrowLeft, ShieldCheck, Sparkles } from 'lucide-react';
-import { registerUser, loginUser } from '../services/firebase';
+import { registerUser, loginUser, logoutUser } from '../services/firebase';
 
 interface LoginProps {
   initialView?: 'login' | 'signup';
   onLogin: (email: string, password?: string) => void;
   onClose: () => void;
+  onSignupComplete?: () => void;
 }
 
 type AuthView = 'login' | 'signup' | 'forgot';
 
-const Login: React.FC<LoginProps> = ({ initialView = 'login', onLogin, onClose }) => {
+const Login: React.FC<LoginProps> = ({ initialView = 'login', onLogin, onClose, onSignupComplete }) => {
   const [view, setView] = useState<AuthView>(initialView);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,15 +32,26 @@ const Login: React.FC<LoginProps> = ({ initialView = 'login', onLogin, onClose }
       try {
         if (view === 'signup') {
           console.log('Starting signup process...');
-          const user = await registerUser(email, password, name);
-          console.log('Registration successful, user:', user);
-          // Keep email, clear other fields and switch to login view
+          await registerUser(email, password, name);
+          console.log('Registration successful, signing out so user must login manually...');
+          
+          // Sign out immediately so user must login manually
+          await logoutUser();
+          
+          // Clear fields
           setPassword('');
           setName('');
-          setSuccess('Profile created successfully! Please log in with your credentials.');
-          setView('login');
-          // Clear success message after 5 seconds
-          setTimeout(() => setSuccess(null), 5000);
+          
+          // Show success dialog
+          alert('Registration Successful!\n\nYour profile has been created.\nPlease log in with your credentials.');
+          
+          // Notify parent to close modal and reopen with login view
+          if (onSignupComplete) {
+            onSignupComplete();
+          } else {
+            // Fallback: switch to login view in modal
+            setView('login');
+          }
         } else if (view === 'login') {
           console.log('🔐 Starting login process with email:', email);
           const user = await loginUser(email, password);

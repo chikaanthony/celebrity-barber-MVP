@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { User, Notification, ApprovalRequest, Referral, Announcement, Testimonial, ChatMessage, Conversation, Comment } from './types';
 import ClientDashboard from './components/ClientDashboard';
 import AdminPortal from './components/AdminPortal';
+import AdminChat from './components/AdminChat';
 import Login from './components/Login';
 import AdminLogin from './components/AdminLogin';
 import { Logo, GoldButton } from './components/CommonUI';
@@ -42,7 +43,8 @@ const App: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalView, setLoginModalView] = useState<'login' | 'signup'>('login');
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
-  const [view, setView] = useState<'client' | 'admin'>('client');
+  const [view, setView] = useState<'client' | 'admin' | 'admin-chat'>('client');
+  const [showAdminChat, setShowAdminChat] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<'premium' | 'dark-stealth'>('premium');
   const [isLoading, setIsLoading] = useState(true);
@@ -303,7 +305,7 @@ const App: React.FC = () => {
       }
     });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -367,7 +369,7 @@ const App: React.FC = () => {
     };
     setNotifications(prev => [adminNotif, ...prev]);
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -444,7 +446,18 @@ const App: React.FC = () => {
   const handleAdminLogin = (email: string) => {
     setIsAdminLoggedIn(true);
     setShowAdminLoginModal(false);
-    setView('admin'); 
+    setView('admin');
+    setShowAdminChat(false);
+  };
+
+  const handleOpenAdminChat = () => {
+    setShowAdminChat(true);
+    setView('admin-chat');
+  };
+
+  const handleBackToAdmin = () => {
+    setShowAdminChat(false);
+    setView('admin');
   };
 
   const handleLogout = async () => {
@@ -667,8 +680,6 @@ const App: React.FC = () => {
     }
   };
 
-  const currentChatMessages = currentUser ? (conversations.find(c => c.userId === currentUser.id)?.messages || []) : [];
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -733,7 +744,7 @@ const App: React.FC = () => {
         </nav>
       </header>
 
-      <main className={`mx-auto transition-all duration-500 ${view === 'admin' ? 'max-w-6xl' : 'max-w-2xl'}`}>
+      <main className={`mx-auto transition-all duration-500 ${view === 'admin' || view === 'admin-chat' ? 'max-w-full' : 'max-w-2xl'} px-4`}>
         {view === 'client' ? (
           <ClientDashboard 
             user={currentUser}
@@ -741,7 +752,7 @@ const App: React.FC = () => {
             notifications={notifications}
             announcements={announcements}
             testimonials={testimonials}
-            chatMessages={currentChatMessages}
+            chatMessages={conversations.find(c => c.userId === currentUser?.id)?.messages || []}
             onReportPayment={handleReportPayment}
             onVipSubscription={handleVipSubscription}
             onReferral={handleAddReferral}
@@ -755,25 +766,43 @@ const App: React.FC = () => {
             onLikeAnnouncement={handleLikeAnnouncement}
             onCommentAnnouncement={handleAddAnnouncementComment}
           />
+        ) : view === 'admin-chat' ? (
+          <AdminChat
+            conversations={conversations}
+            users={allUsers}
+            onSendMessage={handleAdminSendMessage}
+            onMarkAsRead={handleMarkAsRead}
+            onBack={handleBackToAdmin}
+          />
         ) : (
           <AdminPortal 
             requests={requests}
             users={allUsers}
             referrals={referrals}
             notifications={notifications}
-            conversations={conversations}
             announcements={announcements}
             onApprove={handleApprove}
             onReject={(id) => setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' } : r))}
             onConfirmReferral={handleConfirmReferral}
             onBroadcast={handleBroadcast}
-            onSendMessage={handleAdminSendMessage}
-            onMarkAsRead={handleMarkAsRead}
+            onOpenChat={handleOpenAdminChat}
           />
         )}
       </main>
 
-      {showLoginModal && <Login initialView={loginModalView} onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
+      {showLoginModal && <Login 
+            initialView={loginModalView} 
+            onLogin={handleLogin} 
+            onClose={() => setShowLoginModal(false)}
+            onSignupComplete={() => {
+              setShowLoginModal(false);
+              // Reopen with login view after a brief delay
+              setTimeout(() => {
+                setLoginModalView('login');
+                setShowLoginModal(true);
+              }, 300);
+            }}
+          />}
       {showAdminLoginModal && <AdminLogin onLogin={handleAdminLogin} onClose={() => setShowAdminLoginModal(false)} />}
     </div>
   );

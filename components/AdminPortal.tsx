@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Users, 
@@ -9,64 +9,54 @@ import {
   Eye,
   CreditCard,
   UserCheck,
-  Send,
   Activity,
   MessageSquare,
-  Plus,
   History as HistoryIcon,
   Crown,
   Calendar,
   AlertTriangle,
   Receipt,
   FileText,
-  Upload,
   Search,
-  Filter,
   TrendingUp,
-  Clock
+  Clock,
+  Upload,
+  Plus
 } from 'lucide-react';
 import { Card, GoldButton } from './CommonUI';
-import { ApprovalRequest, User, Referral, Conversation, ChatMessage, Announcement, Notification } from '../types';
+import { ApprovalRequest, User, Referral, Announcement, Notification } from '../types';
 
 interface AdminPortalProps {
   requests: ApprovalRequest[];
   users: User[];
   referrals: Referral[];
   notifications: Notification[];
-  conversations: Conversation[];
   announcements: Announcement[];
   onApprove: (requestId: string) => void;
   onReject: (requestId: string) => void;
   onConfirmReferral: (referralId: string) => void;
   onBroadcast: (title: string, message: string) => void;
-  onSendMessage: (userId: string, text: string) => void;
-  onMarkAsRead: (userId: string) => void;
+  onOpenChat: () => void;
 }
 
 const AdminPortal: React.FC<AdminPortalProps> = ({ 
   requests = [], 
   users = [], 
   referrals = [],
-  conversations = [],
   announcements = [],
   onApprove, 
   onReject,
   onConfirmReferral,
   onBroadcast,
-  onSendMessage,
-  onMarkAsRead
+  onOpenChat
 }) => {
   const [activeTab, setActiveTab] = useState<'approvals' | 'referrals' | 'analytics' | 'broadcast' | 'messages' | 'vips' | 'ledger'>('approvals');
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProof, setSelectedProof] = useState<ApprovalRequest | null>(null);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
-  const [isSelectingNewClient, setIsSelectingNewClient] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const activeConversation = conversations.find(c => c.userId === activeConversationId);
+  // Chat functionality moved to separate AdminChat page
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const approvedRequests = requests.filter(r => r.status === 'approved');
   const pendingReferrals = referrals.filter(r => r.status === 'pending');
@@ -84,18 +74,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({
     acc[date].push(req);
     return acc;
   }, {} as Record<string, ApprovalRequest[]>);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    if (activeConversationId) { onMarkAsRead(activeConversationId); }
-  }, [activeConversation?.messages, activeConversationId, onMarkAsRead]);
-
-  const handleSendReply = () => {
-    if (replyText.trim() && activeConversationId) {
-      onSendMessage(activeConversationId, replyText);
-      setReplyText('');
-    }
-  };
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -323,95 +301,18 @@ const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
 
           {activeTab === 'messages' && (
-            <div className="flex flex-col md:flex-row h-[calc(100vh-280px)] min-h-[600px]">
-              {/* Client List Sidebar */}
-              <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-zinc-800/50 bg-black/20 overflow-y-auto scrollbar-hide shrink-0 max-h-48 md:max-h-full">
-                <div className="p-6 sticky top-0 bg-black/60 backdrop-blur-md z-10 border-b border-zinc-800/50 flex justify-between items-center">
-                   <h3 className="text-[9px] font-black uppercase tracking-[0.3em] gold-text">Conversations</h3>
-                   <button onClick={() => setIsSelectingNewClient(!isSelectingNewClient)} className="p-2 gold-gradient rounded-lg text-black hover:rotate-90 transition-transform"><Plus className="w-3 h-3" /></button>
-                </div>
-                {isSelectingNewClient ? (
-                  <div className="p-4 space-y-2">
-                    <p className="text-[7px] uppercase tracking-widest font-black text-zinc-500 px-4 mb-2">Select Client</p>
-                    {users.map(u => (
-                      <button key={u.id} onClick={() => { setActiveConversationId(u.id); setIsSelectingNewClient(false); }} className="w-full p-3 text-left rounded-xl hover:bg-[var(--accent)]/10 text-xs font-bold text-zinc-300">
-                        {u.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  conversations.map(conv => (
-                    <button key={conv.userId} onClick={() => setActiveConversationId(conv.userId)} className={`w-full p-6 text-left transition-all relative ${activeConversationId === conv.userId ? 'bg-[var(--accent)]/5' : 'hover:bg-zinc-800/30'}`}>
-                      {activeConversationId === conv.userId && <div className="absolute left-0 top-0 bottom-0 w-1 gold-gradient"></div>}
-                      <div className="flex justify-between items-center mb-1">
-                        <p className={`font-bold text-xs ${conv.unreadCount > 0 ? 'text-white' : 'text-zinc-500'}`}>{conv.userName}</p>
-                        {conv.unreadCount > 0 && <span className="bg-red-500 text-[7px] font-black px-1.5 py-0.5 rounded-full">{conv.unreadCount}</span>}
-                      </div>
-                      <p className={`text-[9px] truncate ${conv.unreadCount > 0 ? 'text-[var(--accent)] font-bold' : 'text-zinc-700'}`}>{conv.lastMessage}</p>
-                    </button>
-                  ))
-                )}
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-20 h-20 gold-gradient rounded-[2.5rem] flex items-center justify-center text-black shadow-xl mb-6">
+                <MessageSquare className="w-10 h-10" />
               </div>
-
-              {/* Chat Window */}
-              <div className="flex-1 flex flex-col bg-black/40 relative overflow-hidden">
-                 {activeConversationId ? (
-                   <>
-                    <div className="p-4 sm:p-6 border-b border-zinc-800/50 bg-black/60 backdrop-blur-md shrink-0">
-                      <div className="flex items-center gap-3 mx-auto w-full max-w-2xl">
-                         <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center text-black shadow-lg"><Users className="w-5 h-5" /></div>
-                         <div><h4 className="font-bold text-sm text-white">{activeConversation?.userName || 'Direct Channel'}</h4><p className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Direct Secure Channel</p></div>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-6 sm:p-10 scrollbar-hide">
-                      <div className="max-w-2xl mx-auto space-y-8">
-                        {activeConversation?.messages.map((msg) => (
-                          <div key={msg.id} className={`flex ${msg.senderId === 'admin' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-                            <div className="max-w-[85%] space-y-1">
-                              <div className={`px-6 py-4 rounded-[1.8rem] text-xs leading-relaxed shadow-xl ${
-                                msg.senderId === 'admin' 
-                                  ? 'gold-gradient text-black font-bold rounded-tr-sm' 
-                                  : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-sm'
-                              }`}>
-                                {msg.text}
-                              </div>
-                              <p className={`text-[7px] font-black uppercase tracking-widest text-zinc-700 ${msg.senderId === 'admin' ? 'text-right' : 'text-left'}`}>
-                                {msg.timestamp}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div ref={chatEndRef} />
-                    </div>
-                    <div className="p-6 bg-black/80 backdrop-blur-xl border-t border-zinc-800/50 shrink-0">
-                      <div className="flex gap-4 max-w-2xl mx-auto items-center">
-                        <input 
-                          type="text" 
-                          value={replyText} 
-                          onChange={(e) => setReplyText(e.target.value)} 
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendReply()} 
-                          placeholder="Type elite response..." 
-                          className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-xs text-white focus:outline-none focus:border-[var(--accent)] transition-all placeholder:text-zinc-600" 
-                        />
-                        <button 
-                          onClick={handleSendReply} 
-                          disabled={!replyText.trim()}
-                          className="p-4 gold-gradient text-black rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-30"
-                        >
-                          <Send className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                   </>
-                 ) : (
-                   <div className="flex-1 flex flex-col items-center justify-center opacity-10 p-12 text-center">
-                     <MessageSquare className="w-20 h-20 mb-6" />
-                     <p className="text-sm font-black uppercase tracking-[0.5em]">Direct Client Transmission</p>
-                     <p className="text-[10px] mt-4 uppercase tracking-widest">Select a channel to begin</p>
-                   </div>
-                 )}
-              </div>
+              <h3 className="text-xl font-luxury gold-text uppercase mb-2">Direct Client Channel</h3>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black mb-8">Open full chat interface for elite communication</p>
+              <button 
+                onClick={onOpenChat}
+                className="px-8 py-4 gold-gradient text-black rounded-2xl font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-xl"
+              >
+                Open Full Chat
+              </button>
             </div>
           )}
 
@@ -573,3 +474,4 @@ const AdminPortal: React.FC<AdminPortalProps> = ({
 };
 
 export default AdminPortal;
+
