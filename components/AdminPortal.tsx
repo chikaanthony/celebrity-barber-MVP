@@ -121,7 +121,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({
                         </div>
                         <p className="text-[9px] text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                           {req.type === 'vip' ? <Receipt className="w-3 h-3 gold-text" /> : <FileText className="w-3 h-3 text-zinc-500" />}
-                          {req.type === 'vip' ? 'VIP SUBSCRIPTION REQUEST' : `SERVICE SESSION: ${req.serviceName}`}
+                          {req.type === 'vip' ? 'VIP SUBSCRIPTION REQUEST' : `Service session: ${req.serviceName}`}
                         </p>
                         <div className="flex items-baseline gap-2">
                           <span className={`text-3xl font-luxury ${req.type === 'vip' ? 'gold-text' : 'text-white'}`}>N{req.amount.toLocaleString()}</span>
